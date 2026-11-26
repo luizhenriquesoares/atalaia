@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Conectar aplicativo · Atalaia</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body class="oauth">
+<main class="oauth-box">
+  <div class="oauth-brand">Atalaia</div>
+  {% if fatal %}
+  <div class="card">
+    <h1>Não foi possível conectar</h1>
+    <p>{{ fatal }}</p>
+  </div>
+  {% else %}
+  <div class="card">
+    <h1>Conectar {{ client_name }}</h1>
+    <p class="muted">O aplicativo <b>{{ client_name }}</b> quer acessar o Atalaia em seu nome. Depois de autorizar,
+      você volta para <code>{{ redirect_host }}</code>.</p>
+    {% if error %}<div class="notice bad">{{ error }}</div>{% endif %}
+    <form method="post" action="/oauth/authorize" autocomplete="on">
+      {% for k, v in req.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <label for="email">E-mail</label>
+      <input id="email" name="email" type="email" required value="{{ email }}" autocomplete="username" {% if not email %}autofocus{% endif %}>
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" {% if email %}autofocus{% endif %}>
+      {% if need_code %}
+      <label for="code">Código do aplicativo autenticador (ou código de recuperação)</label>
+      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code">
+      {% else %}
+      <details class="oauth-mfa"><summary>Tenho verificação em duas etapas</summary>
+        <label for="code">Código do aplicativo autenticador</label>
+        <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code">
+      </details>
+      {% endif %}
+      <fieldset class="oauth-access">
+        <legend>O que o aplicativo poderá fazer</legend>
+        <label class="opt"><input type="radio" name="access" value="read" {% if not can_write %}checked{% endif %}>
+          <span><b>Somente consultar</b><br><span class="muted">Painel, alvos, varreduras, achados e relatórios.</span></span></label>
+        {% if can_write %}
+        <label class="opt"><input type="radio" name="access" value="write" checked>
+          <span><b>Consultar e agir</b><br><span class="muted">Também cadastrar e verificar alvos, iniciar e cancelar
+          varreduras e triar achados. Exige papel de analista ou superior.</span></span></label>
+        {% endif %}
+      </fieldset>
+      <p class="muted small">O aplicativo nunca recebe sua senha. As regras da organização continuam valendo: só alvos
+        com propriedade comprovada podem ser varridos, e tudo fica na trilha de auditoria. Você pode desconectar a
+        qualquer momento em Minha conta.</p>
+      <div class="row">
+        <button class="primary" type="submit" name="action" value="approve">Autorizar</button>
+        <button type="submit" name="action" value="deny" formnovalidate>Recusar</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</main>
+</body>
+</html>
