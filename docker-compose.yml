@@ -1,0 +1,33 @@
+# API e workers separados sobre PostgreSQL. Para mais capacidade de varredura:
+#   docker compose up --build --scale worker=4
+x-atalaia: &atalaia
+  build: .
+  depends_on:
+    db: {condition: service_healthy}
+  environment: &env
+    ATALAIA_DATABASE_URL: postgresql+psycopg://atalaia:${POSTGRES_PASSWORD}@db/atalaia
+    ATALAIA_SECRET_KEY: ${ATALAIA_SECRET_KEY:?defina ATALAIA_SECRET_KEY com 32+ caracteres}
+    ATALAIA_EMBEDDED_WORKER: "false"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: atalaia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: atalaia
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atalaia"]
+      interval: 5s
+  app:
+    <<: *atalaia
+    ports: ["8000:8000"]
+  worker:
+    <<: *atalaia
+    command: ["python", "-m", "atalaia.worker"]
+    healthcheck: {disable: true}
+    # Chromium precisa de mais memória compartilhada do que o padrão de 64 MB do Docker.
+    shm_size: 1gb
+volumes:
+  pgdata:
