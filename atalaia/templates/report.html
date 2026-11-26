@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório de segurança — {{ target.name }}</title>
+<style>
+  :root { --critical:#8b1a1a; --high:#c2410c; --medium:#b45309; --low:#1d4ed8; --info:#475569; }
+  body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:#111827; margin:0; background:#f3f4f6; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px; background:#fff; }
+  h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 32px 0 12px; border-bottom:1px solid #e5e7eb; padding-bottom:6px; }
+  .meta { color:#4b5563; } .meta span { margin-right: 18px; }
+  .counts { display:flex; gap:10px; margin:20px 0; }
+  .count { flex:1; border-radius:8px; padding:12px; color:#fff; text-align:center; }
+  .count b { display:block; font-size:26px; }
+  .critical { background:var(--critical);} .high { background:var(--high);} .medium { background:var(--medium);}
+  .low { background:var(--low);} .info { background:var(--info);}
+  table { width:100%; border-collapse:collapse; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+  .badge { display:inline-block; border-radius:4px; padding:1px 8px; color:#fff; font-size:12px; font-weight:600; }
+  .finding { border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin:14px 0; page-break-inside:avoid; }
+  .finding h3 { margin:0 0 6px; font-size:16px; }
+  .finding dl { display:grid; grid-template-columns:130px 1fr; gap:4px 12px; margin:10px 0 0; }
+  .finding dt { color:#6b7280; } .finding dd { margin:0; overflow-wrap:anywhere; }
+  code, pre { font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; background:#f3f4f6; border-radius:4px; }
+  pre { padding:8px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+  footer { color:#6b7280; font-size:12px; margin-top:40px; }
+  @media print { body { background:#fff; } main { padding:0; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Relatório de avaliação de segurança</h1>
+  <p class="meta">
+    <span><b>Alvo:</b> {{ target.name }} ({{ target.base_url }})</span><br>
+    <span><b>Perfil:</b> {{ profile_label }}</span>
+    <span><b>Início:</b> {{ scan.started_at or "—" }}</span>
+    <span><b>Fim:</b> {{ scan.finished_at or "—" }}</span><br>
+    <span><b>Páginas analisadas:</b> {{ scan.pages_crawled }}</span>
+    {% if scan.summary.get("rendered") %}<span><b>Renderizadas no navegador:</b> {{ scan.summary.get("rendered") }}</span>{% endif %}
+    <span><b>Requisições:</b> {{ scan.requests_sent }}</span>
+    <span><b>Situação:</b> {{ scan_status }}</span>
+  </p>
+
+  <div class="counts">
+    {% for s in severities %}<div class="count {{ s }}"><b>{{ counts[s] }}</b>{{ sev_label[s] }}</div>{% endfor %}
+  </div>
+  <p>Os números acima contam achados em aberto. Esta varredura registrou
+     {{ scan.summary.get("new", 0) }} achado(s) novo(s), {{ scan.summary.get("reopened", 0) }} reaberto(s) e
+     {{ scan.summary.get("fixed", 0) }} deixaram de ser detectados.</p>
+  {% for note in scan.notes %}<p><b>Observação:</b> {{ note }}</p>{% endfor %}
+
+  <h2>Resumo</h2>
+  {% if findings %}
+  <table>
+    <tr><th>Severidade</th><th>Achado</th><th>Local</th><th>Situação</th></tr>
+    {% for f in findings %}
+    <tr><td><span class="badge {{ f.severity }}">{{ sev_label[f.severity] }}</span></td>
+        <td>{{ f.title }}</td><td>{{ f.url }}{% if f.parameter %} ({{ f.parameter }}){% endif %}</td>
+        <td>{{ status_label[f.status] }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p>Nenhum achado nesta varredura.</p>{% endif %}
+
+  <h2>Detalhamento</h2>
+  {% for f in findings %}
+  <section class="finding">
+    <h3><span class="badge {{ f.severity }}">{{ sev_label[f.severity] }}</span> {{ f.title }}</h3>
+    <p>{{ f.description }}</p>
+    <dl>
+      <dt>URL</dt><dd><code>{{ f.method }} {{ f.url }}</code></dd>
+      {% if f.parameter %}<dt>Parâmetro</dt><dd><code>{{ f.parameter }}</code></dd>{% endif %}
+      <dt>Classificação</dt><dd>{% if f.cwe %}CWE-{{ f.cwe }} · {% endif %}{{ f.owasp }} · CVSS {{ f.cvss }} · confiança {{ conf_label[f.confidence] }}</dd>
+      <dt>Evidência</dt><dd><pre>{{ f.evidence }}</pre></dd>
+      <dt>Como corrigir</dt><dd>{{ f.remediation }}</dd>
+      {% if f.references %}<dt>Referências</dt><dd>{% for r in f.references %}{{ r }}<br>{% endfor %}</dd>{% endif %}
+      <dt>Histórico</dt><dd>Visto pela primeira vez em {{ f.first_seen }}; última detecção em {{ f.last_seen }}.</dd>
+    </dl>
+  </section>
+  {% endfor %}
+
+  <footer>Gerado por Atalaia {{ version }}. Varredura automatizada não destrutiva realizada em alvo com
+  propriedade verificada. Resultados automatizados não substituem um teste de intrusão manual.</footer>
+</main>
+</body>
+</html>
